@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HexArena</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>HEXARENA</h1>
+  <p>Contra la IA · local · en red</p>
+</header>
+
+<!-- ══════════════════ MENU ══════════════════ -->
+<section id="screen-menu">
+
+  <div id="menu-root" class="mode-cards">
+    <div class="mode-card" data-open="ai">
+      <h2>Contra la IA</h2>
+      <p>Elige tamaño de tablero y dificultad. La IA piensa con búsqueda MCTS + heurísticas de distancia y puentes.</p>
+    </div>
+    <div class="mode-card" data-open="local">
+      <h2>Jugador vs Jugador (local)</h2>
+      <p>Dos personas se turnan en el mismo equipo.</p>
+    </div>
+    <div class="mode-card" data-open="network">
+      <h2>Jugador vs Jugador (en red)</h2>
+      <p>Un jugador aloja la partida en su red local, el otro se conecta por IP.</p>
+    </div>
+  </div>
+
+  <!-- --- AI setup --- -->
+  <div id="panel-ai" class="panel hidden">
+    <h2>Contra la IA</h2>
+    <div class="field-row">
+      <label>Tamaño</label>
+      <select id="ai-size">
+        <option value="5">5 × 5</option>
+        <option value="7" selected>7 × 7</option>
+        <option value="9">9 × 9</option>
+        <option value="11">11 × 11</option>
+        <option value="13">13 × 13</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <label>Dificultad</label>
+      <select id="ai-difficulty">
+        <option value="easy">Fácil</option>
+        <option value="medium" selected>Media</option>
+        <option value="hard">Difícil</option>
+      </select>
+    </div>
+    <div class="field-row">
+      <label>Juegas como</label>
+      <select id="ai-role">
+        <option value="1">Rojo (empiezas tú)</option>
+        <option value="2">Azul (empieza la IA)</option>
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="primary" id="ai-start">Comenzar partida</button>
+    </div>
+    <div class="back-link" data-back>← Volver</div>
+  </div>
+
+  <!-- --- Local setup --- -->
+  <div id="panel-local" class="panel hidden">
+    <h2>Jugador vs Jugador (local)</h2>
+    <div class="field-row">
+      <label>Tamaño</label>
+      <select id="local-size">
+        <option value="5">5 × 5</option>
+        <option value="7" selected>7 × 7</option>
+        <option value="9">9 × 9</option>
+        <option value="11">11 × 11</option>
+        <option value="13">13 × 13</option>
+      </select>
+    </div>
+    <div class="btn-row">
+      <button class="primary" id="local-start">Comenzar partida</button>
+    </div>
+    <div class="back-link" data-back>← Volver</div>
+  </div>
+
+  <!-- --- Network setup --- -->
+  <div id="panel-network" class="panel hidden">
+    <h2>Jugador vs Jugador (en red)</h2>
+
+    <div id="network-choice" class="btn-row">
+      <button class="primary" id="network-open-host">Alojar partida</button>
+      <button class="secondary" id="network-open-join">Unirse a partida</button>
+    </div>
+
+    <div id="network-host" class="hidden">
+      <div class="field-row">
+        <label>Tamaño</label>
+        <select id="host-size">
+          <option value="5">5 × 5</option>
+          <option value="7" selected>7 × 7</option>
+          <option value="9">9 × 9</option>
+          <option value="11">11 × 11</option>
+          <option value="13">13 × 13</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="primary" id="host-start">Crear partida</button>
+      </div>
+      <div id="host-info" class="host-info hidden"></div>
+    </div>
+
+    <div id="network-join" class="hidden">
+      <div class="field-row">
+        <label>IP del anfitrión</label>
+        <input type="text" id="join-ip" placeholder="192.168.1.23">
+      </div>
+      <div class="field-row">
+        <label>Puerto</label>
+        <input type="number" id="join-port" value="51137">
+      </div>
+      <div class="btn-row">
+        <button class="primary" id="join-start">Conectar</button>
+      </div>
+      <div id="join-status" class="error-text"></div>
+    </div>
+
+    <div class="back-link" data-back>← Volver</div>
+  </div>
+
+</section>
+
+<!-- ══════════════════ GAME ══════════════════ -->
+<section id="screen-game" class="hidden">
+
+  <div class="controls">
+    <button class="secondary" id="btn-undo">Deshacer</button>
+    <button class="ghost" id="btn-menu">Menú</button>
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot p1"></div><span id="legend-p1">Rojo — arriba ↔ abajo</span></div>
+    <div class="legend-item"><div class="legend-dot p2"></div><span id="legend-p2">Azul — izquierda ↔ derecha</span></div>
+  </div>
+
+  <div class="status" id="status">—</div>
+
+  <div class="board-wrap">
+    <svg class="board-svg" id="board-svg"></svg>
+  </div>
+
+  <div class="history-panel">
+    <h3>Historial de jugadas</h3>
+    <div class="history-list" id="history-list"></div>
+  </div>
+
+</section>
+
+<script src="app.js"></script>
+</body>
+</html>
