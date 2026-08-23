@@ -325,6 +325,52 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .move-badge.p1 { background: var(--p1-dim); color: var(--p1); }
 .move-badge.p2 { background: var(--p2-dim); color: var(--p2); }
 
+/* ── end-of-game modal ── */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5,5,9,0.72);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeDown .25s ease both;
+}
+
+.modal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 34px 40px;
+  text-align: center;
+  min-width: 280px;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.55);
+  animation: popIn .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+.modal-card h2 {
+  font-family: var(--font-head);
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  margin-bottom: 6px;
+}
+
+.modal-card h2.win-p1 { color: var(--p1); }
+.modal-card h2.win-p2 { color: var(--p2); }
+
+.modal-sub {
+  color: var(--muted);
+  font-size: .72rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  min-height: 1em;
+}
+
+.modal-actions { display: flex; gap: 10px; justify-content: center; }
+
 .dots::after { content: ''; animation: dots 1.2s steps(4, end) infinite; }
 
 @keyframes dots {

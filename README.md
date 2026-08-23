@@ -14,9 +14,8 @@ py -m venv .venv
 .venv\Scripts\python main.py
 ```
 
-Para iterar solo en la interfaz (sin levantar Python cada vez), abre
-`ui/dev.html` en un navegador — trae un `pywebview_stub.js` que simula la API
-con un tablero y una IA de juguete, solo para probar los flujos de pantalla.
+La app solo corre empaquetada o vía `main.py` — la IA real vive en Python, no
+hay una versión jugable en el navegador ni un stub con IA de juguete.
 
 ## Generar el .exe portable
 

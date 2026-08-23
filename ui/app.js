@@ -4,6 +4,7 @@
 
 let ready = false;
 let netInfo = { role: null, waitingPeer: false };
+let lastGameConfig = null; // { mode: 'ai'|'local', size, difficulty?, humanPlayer? } — for "jugar de nuevo"
 
 const game = {
   mode: null, size: null, board: null, turn: 1, winner: null,
@@ -49,22 +50,32 @@ document.querySelectorAll('[data-back]').forEach(el => {
   el.addEventListener('click', () => { resetNetworkPanel(); showMenuPanel(null); });
 });
 
+function startAiGame(size, difficulty, humanPlayer) {
+  lastGameConfig = { mode: 'ai', size, difficulty, humanPlayer };
+  return api().new_ai_game(size, difficulty, humanPlayer).then(state => {
+    applyState(state);
+    showScreen('game');
+  });
+}
+
+function startLocalGame(size) {
+  lastGameConfig = { mode: 'local', size };
+  return api().new_local_game(size).then(state => {
+    applyState(state);
+    showScreen('game');
+  });
+}
+
 $('ai-start').addEventListener('click', () => {
   const size = parseInt($('ai-size').value, 10);
   const difficulty = $('ai-difficulty').value;
   const humanPlayer = parseInt($('ai-role').value, 10);
-  api().new_ai_game(size, difficulty, humanPlayer).then(state => {
-    applyState(state);
-    showScreen('game');
-  });
+  startAiGame(size, difficulty, humanPlayer);
 });
 
 $('local-start').addEventListener('click', () => {
   const size = parseInt($('local-size').value, 10);
-  api().new_local_game(size).then(state => {
-    applyState(state);
-    showScreen('game');
-  });
+  startLocalGame(size);
 });
 
 $('network-open-host').addEventListener('click', () => { resetNetworkPanel(); show($('network-host')); });
@@ -106,6 +117,17 @@ $('btn-menu').addEventListener('click', () => {
 $('btn-undo').addEventListener('click', () => {
   api().undo().then(applyState);
 });
+
+$('win-modal-again').addEventListener('click', () => {
+  if (!lastGameConfig) return;
+  if (lastGameConfig.mode === 'ai') {
+    startAiGame(lastGameConfig.size, lastGameConfig.difficulty, lastGameConfig.humanPlayer);
+  } else if (lastGameConfig.mode === 'local') {
+    startLocalGame(lastGameConfig.size);
+  }
+});
+
+$('win-modal-menu').addEventListener('click', () => { $('btn-menu').click(); });
 
 // ══════════════════════════════════════════════════════════════
 // engine events / state application
@@ -333,12 +355,39 @@ function updateControls() {
   $('btn-undo').disabled = !game.history || game.history.length === 0 || !!game.winner;
 }
 
+function updateWinModal() {
+  const modal = $('win-modal');
+  if (!game.winner) { hide(modal); return; }
+
+  const cls = game.winner === 1 ? 'win-p1' : 'win-p2';
+  const colorLabel = game.winner === 1 ? 'Rojo' : 'Azul';
+  let title;
+  if (game.mode === 'ai') {
+    title = game.winner === game.humanPlayer ? '¡Ganaste! 🎉' : 'Ganó la IA';
+  } else if (game.mode === 'host' || game.mode === 'client') {
+    title = game.winner === game.humanPlayer ? '¡Ganaste! 🎉' : 'Ganó tu rival';
+  } else {
+    title = `¡Ganó ${colorLabel}! 🎉`;
+  }
+
+  const titleEl = $('win-modal-title');
+  titleEl.textContent = title;
+  titleEl.className = cls;
+  $('win-modal-sub').textContent = `Jugador ${colorLabel}`;
+
+  const canRematch = (game.mode === 'ai' || game.mode === 'local') && lastGameConfig;
+  $('win-modal-again').classList.toggle('hidden', !canRematch);
+
+  show(modal);
+}
+
 function render() {
   renderBoard();
   updateStatus();
   updateLegend();
   updateHistory();
   updateControls();
+  updateWinModal();
 }
 
 // ══════════════════════════════════════════════════════════════
