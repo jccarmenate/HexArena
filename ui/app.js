@@ -17,8 +17,16 @@ function show(el) { el.classList.remove('hidden'); }
 function hide(el) { el.classList.add('hidden'); }
 
 function showScreen(name) {
-  if (name === 'menu') { show($('screen-menu')); hide($('screen-game')); }
-  else { hide($('screen-menu')); show($('screen-game')); }
+  if (name === 'menu') {
+    show($('screen-menu'));
+    hide($('screen-game'));
+  } else {
+    hide($('screen-menu'));
+    show($('screen-game'));
+    // the board sizes itself off the now-visible container, so it must be
+    // shown before we measure it — re-render right after switching over.
+    render();
+  }
 }
 
 function showMenuPanel(which) {
@@ -143,9 +151,9 @@ window.onEngineEvent = function (state) {
 // board rendering (SVG hex grid)
 // ══════════════════════════════════════════════════════════════
 
-const HEX_R = 28;
-const HEX_H = HEX_R * Math.sqrt(3);
-const PAD = 44;
+const PAD = 20;
+const HEX_R_MIN = 14;
+const HEX_R_MAX = 90;
 
 function hexCorners(cx, cy, r) {
   return Array.from({ length: 6 }, (_, i) => {
@@ -154,10 +162,32 @@ function hexCorners(cx, cy, r) {
   }).join(' ');
 }
 
-function hexCenter(row, col) {
-  const cx = PAD + col * HEX_R * 1.5 + row * HEX_R * 0.75;
-  const cy = PAD + row * HEX_H + col * HEX_H * 0.5;
+// Pointy-top hexagons (vertex at top/bottom, per hexCorners' angles) laid out
+// on axial coordinates where row/col match engine/board.py's DIRECTIONS.
+// Each row shift moves half a hex-width right, matching the classic slanted
+// Hex board look.
+function hexCenter(row, col, R) {
+  const hexW = R * Math.sqrt(3);
+  const cx = PAD + hexW * col + (hexW / 2) * row;
+  const cy = PAD + 1.5 * R * row;
   return [cx, cy];
+}
+
+function boardPixelSize(n, R) {
+  const [lastCx, lastCy] = hexCenter(n - 1, n - 1, R);
+  return { width: lastCx + R + PAD, height: lastCy + (R * Math.sqrt(3)) / 2 + PAD };
+}
+
+// Solve for the largest hex radius that fits an n x n board inside
+// availW x availH (boardPixelSize is affine in R, so this is a direct solve,
+// no iteration needed).
+function fitHexRadius(n, availW, availH) {
+  const unit = boardPixelSize(n, 1);
+  const kW = unit.width - 2 * PAD;
+  const kH = unit.height - 2 * PAD;
+  const rw = (availW - 2 * PAD) / kW;
+  const rh = (availH - 2 * PAD) / kH;
+  return Math.max(HEX_R_MIN, Math.min(HEX_R_MAX, Math.min(rw, rh)));
 }
 
 function humanCanClick() {
@@ -179,9 +209,12 @@ function renderBoard() {
   if (!game.board) { svg.innerHTML = ''; return; }
   const n = game.size;
 
-  const [lastCx, lastCy] = hexCenter(n - 1, n - 1);
-  const W = lastCx + HEX_R + PAD;
-  const H = lastCy + HEX_H / 2 + PAD;
+  const wrap = $('board-wrap');
+  const availW = wrap.clientWidth || 600;
+  const availH = wrap.clientHeight || 500;
+  const R = fitHexRadius(n, availW, availH);
+
+  const { width: W, height: H } = boardPixelSize(n, R);
   svg.setAttribute('width', W);
   svg.setAttribute('height', H);
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
@@ -189,8 +222,8 @@ function renderBoard() {
 
   const edgeGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
   function edgeLine(r1, c1, r2, c2, cls) {
-    const [x1, y1] = hexCenter(r1, c1);
-    const [x2, y2] = hexCenter(r2, c2);
+    const [x1, y1] = hexCenter(r1, c1, R);
+    const [x2, y2] = hexCenter(r2, c2, R);
     const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
     l.setAttribute('x1', x1); l.setAttribute('y1', y1);
     l.setAttribute('x2', x2); l.setAttribute('y2', y2);
@@ -215,7 +248,7 @@ function renderBoard() {
 
   for (let r = 0; r < n; r++) {
     for (let c = 0; c < n; c++) {
-      const [cx, cy] = hexCenter(r, c);
+      const [cx, cy] = hexCenter(r, c, R);
       const val = game.board[r][c];
       const inWin = winCells.has(`${r},${c}`);
 
@@ -227,7 +260,7 @@ function renderBoard() {
       g.setAttribute('class', cls);
 
       const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-      poly.setAttribute('points', hexCorners(cx, cy, HEX_R - 1.5));
+      poly.setAttribute('points', hexCorners(cx, cy, R - 1.5));
       g.appendChild(poly);
 
       if (val === 0 && clickable) {
@@ -320,3 +353,10 @@ function init() {
 
 if (window.pywebview) init();
 else document.addEventListener('pywebviewready', init);
+
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  if (!game.board) return;
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(renderBoard, 80);
+});
