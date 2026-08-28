@@ -1,41 +1,43 @@
 # HexArena
 
+🇬🇧 English (you are here) · 🇪🇸 [Leer en español](README.es.md)
+
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.13-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-informational.svg)
 
-Hex de escritorio para Windows, empaquetado como un único `.exe` portable
-(sin instalador). Contra la IA con niveles de dificultad, jugador vs jugador
-local, y jugador vs jugador en red (LAN / IP directa).
+Desktop Hex game for Windows, packaged as a single portable `.exe`
+(no installer). Play against the AI with difficulty levels, local
+player-vs-player, and networked player-vs-player (LAN / direct IP).
 
 <p align="center">
-  <img src="docs/preview.svg" alt="Tablero de HexArena" width="640">
+  <img src="docs/preview.svg" alt="HexArena board" width="640">
 </p>
 
-## Características
+## Features
 
-- **IA propia**: búsqueda MCTS con RAVE, sesgo por distancia (Dijkstra) y
-  reconocimiento de puentes — no una biblioteca de terceros.
-- **3 niveles de dificultad**: de "comete errores humanos" a "juega con todas
-  las heurísticas activas", ajustando presupuesto de tiempo y agresividad de
-  las heurísticas en un único motor parametrizado.
-- **3 modos de juego**: contra la IA, jugador vs jugador local (hotseat), y
-  jugador vs jugador en red (un jugador aloja, el otro se conecta por IP).
-- **Un único `.exe` portable**: sin instalador, sin dependencias externas,
-  corre desde cualquier carpeta o USB.
-- **Motor de reglas centralizado**: una sola fuente de verdad para
-  adyacencia/conexión/legalidad, compartida por la IA, el modo local y la red
-  — nada de lógica duplicada que pueda desincronizarse.
+- **Custom AI**: MCTS search with RAVE, distance bias (Dijkstra), and
+  bridge recognition — not a third-party library.
+- **3 difficulty levels**: from "makes human-like mistakes" to "plays with
+  every heuristic active", by tuning time budget and heuristic
+  aggressiveness in a single parameterized engine.
+- **3 game modes**: against the AI, local player-vs-player (hotseat), and
+  networked player-vs-player (one player hosts, the other connects by IP).
+- **A single portable `.exe`**: no installer, no external dependencies,
+  runs from any folder or USB drive.
+- **Centralized rules engine**: a single source of truth for
+  adjacency/connection/legality, shared by the AI, local mode, and
+  networking — no duplicated logic that can drift out of sync.
 
-## Origen
+## Origin
 
-Nació de un proyecto de IA universitario (jugador de Hex vía MCTS) que solo
-existía como una clase Python sin tablero ni interfaz. HexArena lo retoma
-desde cero como aplicación completa: motor de reglas propio, IA fusionada y
-mejorada, tres modos de juego, interfaz pulida y empaquetado real para
-Windows.
+Grew out of a university AI project (a Hex-playing agent via MCTS) that
+only existed as a Python class with no board or interface. HexArena
+picks it up from scratch as a complete application: a custom rules
+engine, a merged and improved AI, three game modes, a polished
+interface, and real packaging for Windows.
 
-## Ejecutar en desarrollo
+## Running in development
 
 ```bash
 py -m venv .venv
@@ -43,46 +45,46 @@ py -m venv .venv
 .venv\Scripts\python main.py
 ```
 
-## Generar el .exe portable
+## Building the portable .exe
 
 ```bash
 .venv\Scripts\pip install -r requirements.txt
 .venv\Scripts\pyinstaller hex_app.spec
 ```
 
-El resultado queda en `dist/HexArena.exe`: un único archivo, sin instalador,
-que corre desde cualquier carpeta o USB. La primera vez que Windows lo
-ejecute puede mostrar una advertencia de SmartScreen (el ejecutable no está
-firmado); hay que elegir "Más información" → "Ejecutar de todas formas".
+The result lands in `dist/HexArena.exe`: a single file, no installer,
+that runs from any folder or USB drive. The first time Windows runs it,
+it may show a SmartScreen warning (the executable isn't signed); choose
+"More info" → "Run anyway".
 
-## Pruebas
+## Tests
 
 ```bash
-.venv\Scripts\python tests\test_engine.py      # reglas + IA: legalidad, conexión, puentes
-.venv\Scripts\python tests\test_network.py     # host/cliente por TCP en localhost
-.venv\Scripts\python tests\test_difficulty.py  # Difícil debe ganarle a Fácil (lento, ~10s)
+.venv\Scripts\python tests\test_engine.py      # rules + AI: legality, connectivity, bridges
+.venv\Scripts\python tests\test_network.py     # host/client over TCP on localhost
+.venv\Scripts\python tests\test_difficulty.py  # Hard must beat Easy (slow, ~10s)
 ```
 
-## Estructura
+## Structure
 
 ```
-main.py             entry point: crea la ventana pywebview
-engine/board.py      HexBoard: reglas, adyacencia, conexión, puentes
-engine/ai.py         HexAI: MCTS + RAVE, sesgo Dijkstra, niveles de dificultad
-engine/network.py    host/cliente TCP para el modo en red
-engine/api.py        puente entre pywebview y la UI (window.pywebview.api.*)
+main.py             entry point: creates the pywebview window
+engine/board.py      HexBoard: rules, adjacency, connectivity, bridges
+engine/ai.py         HexAI: MCTS + RAVE, Dijkstra bias, difficulty levels
+engine/network.py    TCP host/client for network mode
+engine/api.py        bridge between pywebview and the UI (window.pywebview.api.*)
 ui/                  index.html + style.css + app.js
-tests/                pruebas de reglas, IA y red
-scripts/make_preview.py  genera docs/preview.svg (la imagen de arriba)
+tests/                rules, AI, and network tests
+scripts/make_preview.py  generates docs/preview.svg (the image above)
 ```
 
-## Modo en red — alcance
+## Network mode — scope
 
-Un jugador aloja la partida (queda escuchando en su red local) y comparte su
-IP y puerto; el otro se conecta directamente. Es LAN / IP directa, sin
-matchmaking ni NAT traversal — para jugar por internet el anfitrión tendría
-que configurar port-forwarding en su router por su cuenta.
+One player hosts the game (listens on their local network) and shares
+their IP and port; the other connects directly. It's LAN / direct IP,
+with no matchmaking or NAT traversal — to play over the internet, the
+host would need to set up port-forwarding on their router themselves.
 
-## Licencia
+## License
 
 [MIT](LICENSE)
