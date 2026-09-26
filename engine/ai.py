@@ -154,7 +154,7 @@ class HexAI:
                 break
 
         if node.untried and not b.check_connection(1) and not b.check_connection(2):
-            move = self._pick_expansion(b, node.untried, current, params)
+            move = self._pick_expansion(b, node.untried, current, params, node.move)
             node.untried.remove(move)
             b.place(*move, current)
             child = _Node(move, node, current, _candidates(b, b.legal_moves()))
@@ -163,7 +163,7 @@ class HexAI:
             path.append(node)
             current = 3 - current
 
-        winner, rollout_moves = self._rollout(b, current, start, params)
+        winner, rollout_moves = self._rollout(b, current, start, params, node.move)
 
         for n in path:
             n.visits += 1
@@ -178,17 +178,31 @@ class HexAI:
                         if winner == mover:
                             n.rave_w[mv] = n.rave_w.get(mv, 0) + 1
 
-    def _pick_expansion(self, board: HexBoard, untried: list[tuple[int, int]], player: int, params: DifficultyParams) -> tuple[int, int]:
+    def _pick_expansion(
+        self,
+        board: HexBoard,
+        untried: list[tuple[int, int]],
+        player: int,
+        params: DifficultyParams,
+        last_move: tuple[int, int] | None,
+    ) -> tuple[int, int]:
         if params.use_bridges:
-            carriers = _bridge_carriers(board, player) | _bridge_carriers(board, 3 - player)
-            preferred = [m for m in untried if m in carriers]
+            replies = _bridge_replies(board, player, last_move)
+            preferred = [m for m in untried if m in replies]
             if preferred:
                 untried = preferred
         if params.dijkstra_bias and self._rng.random() < params.dijkstra_bias:
             return min(untried, key=lambda m: _dijkstra_after(board, m, player))
         return self._rng.choice(untried)
 
-    def _rollout(self, board: HexBoard, current: int, start: float, params: DifficultyParams):
+    def _rollout(
+        self,
+        board: HexBoard,
+        current: int,
+        start: float,
+        params: DifficultyParams,
+        last_move: tuple[int, int] | None = None,
+    ):
         b = board.clone()
         played: list[tuple[tuple[int, int], int]] = []
         player = current
@@ -205,10 +219,9 @@ class HexAI:
 
             move = None
             if params.use_bridges:
-                carriers = _bridge_carriers(b, player)
-                threatened = [m for m in cands if m in carriers]
-                if threatened:
-                    move = self._rng.choice(threatened)
+                replies = _bridge_replies(b, player, last_move)
+                if replies:
+                    move = self._rng.choice(sorted(replies))
             if move is None and params.dijkstra_bias and self._rng.random() < params.dijkstra_bias:
                 move = min(cands, key=lambda m: _dijkstra_after(b, m, player))
             if move is None:
@@ -216,6 +229,7 @@ class HexAI:
 
             b.place(*move, player)
             played.append((move, player))
+            last_move = move
             player = 3 - player
 
 
@@ -230,22 +244,28 @@ def _candidates(board: HexBoard, legal: list[tuple[int, int]]) -> list[tuple[int
     return list(out) if out else legal
 
 
-def _bridge_carriers(board: HexBoard, player: int) -> set[tuple[int, int]]:
-    carriers: set[tuple[int, int]] = set()
-    n = board.size
-    for r in range(n):
-        for c in range(n):
-            if board.get(r, c) != player:
+def _bridge_replies(board: HexBoard, player: int, last_move: tuple[int, int] | None) -> set[tuple[int, int]]:
+    """Cells `player` should answer with after the opponent's `last_move`
+    intruded into one carrier of a bridge between two of `player`'s stones.
+
+    An intact bridge (both carriers empty) is already virtually connected and
+    needs no move; only an intrusion makes the other carrier urgent.
+    """
+    replies: set[tuple[int, int]] = set()
+    if last_move is None or board.get(*last_move) != 3 - player:
+        return replies
+    for ar, ac in board.neighbors(*last_move):
+        if board.get(ar, ac) != player:
+            continue
+        for (dr, dc), d1, d2 in BRIDGES:
+            br, bc = ar + dr, ac + dc
+            if not board.in_bounds(br, bc) or board.get(br, bc) != player:
                 continue
-            for (dr, dc), (d1r, d1c), (d2r, d2c) in BRIDGES:
-                br, bc = r + dr, c + dc
-                if not board.in_bounds(br, bc) or board.get(br, bc) != player:
-                    continue
-                k1, k2 = (r + d1r, c + d1c), (r + d2r, c + d2c)
-                if board.in_bounds(*k1) and board.in_bounds(*k2) and board.get(*k1) == 0 and board.get(*k2) == 0:
-                    carriers.add(k1)
-                    carriers.add(k2)
-    return carriers
+            k1, k2 = (ar + d1[0], ac + d1[1]), (ar + d2[0], ac + d2[1])
+            for hit, other in ((k1, k2), (k2, k1)):
+                if hit == last_move and board.in_bounds(*other) and board.get(*other) == 0:
+                    replies.add(other)
+    return replies
 
 
 def _dijkstra_after(board: HexBoard, move: tuple[int, int], player: int) -> float:

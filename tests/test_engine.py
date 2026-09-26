@@ -10,7 +10,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from engine.board import HexBoard, BRIDGES
-from engine.ai import HexAI, Difficulty, _bridge_carriers
+from engine.ai import HexAI, Difficulty, _bridge_replies
 
 
 def test_neighbors_symmetric():
@@ -52,18 +52,81 @@ def test_no_false_win_on_diagonal_gap():
     print("ok: no false positive on a disconnected column")
 
 
-def test_bridge_pattern_geometry():
-    # A bridge: two same-player stones two steps apart with two empty carriers.
+def test_bridge_patterns_are_real_bridges():
+    # Each pattern's two carriers must be the only common neighbors of the pair.
+    b = HexBoard(9)
+    for offset, d1, d2 in BRIDGES:
+        a = (4, 4)
+        other = (a[0] + offset[0], a[1] + offset[1])
+        common = set(b.neighbors(*a)) & set(b.neighbors(*other))
+        assert common == {(a[0] + d1[0], a[1] + d1[1]), (a[0] + d2[0], a[1] + d2[1])}, offset
+    print("ok: all 6 bridge patterns have exactly the two declared carriers")
+
+
+def test_bridge_reply_answers_intrusion_in_all_patterns():
+    for offset, d1, d2 in BRIDGES:
+        a = (4, 4)
+        other = (a[0] + offset[0], a[1] + offset[1])
+        k1 = (a[0] + d1[0], a[1] + d1[1])
+        k2 = (a[0] + d2[0], a[1] + d2[1])
+        for hit, expected in ((k1, k2), (k2, k1)):
+            b = HexBoard(9)
+            b.place(*a, 1)
+            b.place(*other, 1)
+            b.place(*hit, 2)
+            assert _bridge_replies(b, 1, hit) == {expected}, (offset, hit)
+    print("ok: intrusion into either carrier of any of the 6 patterns is answered")
+
+
+def test_bridge_reply_ignores_intact_and_irrelevant_moves():
     b = HexBoard(7)
     b.place(3, 3, 1)
-    offset, d1, d2 = BRIDGES[0]
-    br, bc = 3 + offset[0], 3 + offset[1]
-    b.place(br, bc, 1)
-    carriers = _bridge_carriers(b, 1)
-    k1 = (3 + d1[0], 3 + d1[1])
-    k2 = (3 + d2[0], 3 + d2[1])
-    assert k1 in carriers and k2 in carriers
-    print("ok: bridge carriers detected for a known pattern")
+    b.place(1, 4, 1)
+    assert _bridge_replies(b, 1, None) == set()          # intact bridge: nothing urgent
+    b.place(5, 5, 2)
+    assert _bridge_replies(b, 1, (5, 5)) == set()        # opponent played far away
+    assert _bridge_replies(b, 2, (5, 5)) == set()        # not the opponent's move from 2's view
+    b2 = HexBoard(7)
+    b2.place(3, 3, 1)
+    b2.place(1, 4, 1)
+    b2.place(2, 3, 2)
+    b2.place(2, 4, 2)                                    # both carriers taken: bridge is dead
+    assert _bridge_replies(b2, 1, (2, 4)) == set()
+    print("ok: no reply for intact bridges, distant moves or already-cut bridges")
+
+
+def test_rollout_policy_answers_intrusion():
+    import time
+    from engine.ai import DIFFICULTY_PARAMS
+
+    b = HexBoard(7)
+    b.place(3, 3, 1)
+    b.place(1, 4, 1)
+    b.place(2, 3, 2)
+    ai = HexAI(1, Difficulty.HARD)
+    params = DIFFICULTY_PARAMS[Difficulty.HARD]
+    for _ in range(30):
+        firsts = ai._rollout(b, 1, time.perf_counter(), params, last_move=(2, 3))[1][0][0]
+        assert firsts == (2, 4), firsts
+    print("ok: rollout policy always answers a bridge intrusion")
+
+
+def test_rollout_policy_leaves_intact_bridge_alone():
+    # Red bridge (3,3)<->(1,4) with both carriers (2,3),(2,4) empty. The bridge is
+    # already safe, so spending the move on a carrier is wasted: the rollout policy
+    # must not systematically fill it.
+    import time
+    from engine.ai import DIFFICULTY_PARAMS
+
+    b = HexBoard(7)
+    b.place(3, 3, 1)
+    b.place(1, 4, 1)
+    ai = HexAI(1, Difficulty.HARD)
+    params = DIFFICULTY_PARAMS[Difficulty.HARD]
+    firsts = [ai._rollout(b, 1, time.perf_counter(), params)[1][0][0] for _ in range(60)]
+    in_carriers = sum(1 for m in firsts if m in ((2, 3), (2, 4)))
+    assert in_carriers < len(firsts), "policy filled the intact bridge every single time"
+    print("ok: rollout policy does not systematically fill an intact bridge")
 
 
 def test_ai_never_returns_illegal_move():
